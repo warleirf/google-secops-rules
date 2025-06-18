@@ -1,0 +1,55 @@
+/*
+    ** warlei.com.br  **
+    Detecta usuários cujo tráfego foi bloqueado por políticas relacionadas a sites ou conteúdos sensível
+*/
+
+rule Detect_Users_Blocked_Porn_Sites
+{
+  meta:
+    author = "Warlei Faria"
+    description = "Detecta usuários cujo tráfego foi bloqueado por políticas relacionadas a sites ou conteúdos sensível."
+    severity = "HIGH"
+    product = "todas fontes de dados"
+    version = "1.0"
+
+
+  events:
+    $log.metadata.log_type != "" 
+    $log.metadata.event_type = "USER_LOGIN"
+    $log.security_result.action = "BLOCK" and
+        (
+            $log.security_result.action_details = ("contains_") or
+            $log.security_result.detection_fields.key = ("porn") or
+            $log.security_result.detection_fields.key = ("adult") or 
+            $log.security_result.detection_fields.key != ("")
+        )
+    $log.target.user.userid = $username
+
+
+    //A regra é acionada relacionado ao usuário acessado nos ultimos 30 minutos
+   match:
+    $username over 30m
+
+
+   outcome:
+    //Pontuação de Risco da severidade do alerta.
+    $risk_score = max(85)
+    //Informa o nome dos produtos envolvidos (eliminando duplicatas).
+    $product = array_distinct($log.metadata.product_name)
+    //Identifica os usuários únicos associados aos eventos.
+    $userid = array_distinct($log.principal.user.userid)
+    //Identifica a porta única usada associada ao evento.
+    $port = array_distinct($log.target.port)
+    //Captura descrições únicas dos eventos analisados.
+    $severity = array_distinct($log.security_result.severity)
+    //Informa descrição do evento.
+    $description = array_distinct($log.metadata.description)
+    $asset_id = array_distinct($log.principal.asset.asset_id)
+    $hostname = array_distinct($log.principal.asset.hostname)
+    $fields = array_distinct($log.additional.fields["Channel"])
+
+
+    //A regra será aplicada se todas as condições forem atendidas
+   condition:
+    $log
+}

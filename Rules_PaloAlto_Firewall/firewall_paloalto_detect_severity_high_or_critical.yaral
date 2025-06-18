@@ -1,0 +1,29 @@
+/*
+    ** warlei.com.br  **
+    Regra para detectar eventos de nivel alto e critico no sistema de Firewall Paloalto
+*/
+
+rule firewall_paloalto_detect_severity_high_or_critical {
+
+  meta:
+    description = "Detecta todos eventos de registro nivel High e Critical no Firewall Paloalto"
+    author = "Solo Iron"
+    version = "1.0"
+    platform = "paloalto"
+    data_source = "firewall_Paloalto"
+    type = "alert"
+    severity = "Medium"
+    priority = "Medium"
+
+
+  events:
+    $e.security_result.severity = "CRITICAL" or 
+    $e.security_result.severity = "HIGH" 
+
+  outcome:
+    $risk_score = 65
+
+
+  condition:
+    $e
+}
