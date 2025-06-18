@@ -1,0 +1,22 @@
+rule firewall_fortinet_failed_authentication
+{
+    meta:
+        description = "Detecta tentativas de autenticação mal-sucedidas no Firewall Fortinet"
+        author = "Warlei Faria"
+        version = "1.0"
+        date = "2024-09-02"
+        type = "alert"
+        platform = "firewall"
+        data_source = "firewall_fortinet"
+        severity = "Medium"
+        priority = "Medium"
+
+    events:
+        (
+        $event.auth.status == "failure" and
+        $event.auth.auth_method == "password"
+        )
+
+    condition:
+        $event
+}

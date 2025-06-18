@@ -1,0 +1,47 @@
+rule firewall_fortigate_access_management_port_via_public_ip {
+   meta:
+    author = "Warlei Faria"
+    description = "Excessive firewall denies from single source"
+    version = "0.01"
+    created = "2025-14-03"
+    product = "Fortinet"
+    service = "FORTINET_FORTIANALYZER"
+    mitre = "T1078"
+    severity = "Low"
+
+   events:
+    //Captura o IP de origem da conexão
+     $private_ip = $e.principal.ip
+     (
+     //Verifica se o IP não está na faixa de rede privada   
+     not net.ip_in_range_cidr($private_ip, "172.16.0.0/12")
+     //Verifica se o IP não está na faixa de rede privada
+     and not net.ip_in_range_cidr($private_ip, "10.0.0.0/8")
+     //Verifica se o IP não está na faixa de rede privada
+     and not net.ip_in_range_cidr($private_ip, "192.168.0.0/24")
+     //Exclui um IP específico da análise (talvez um IP confiável) 
+     and not $e.principal.ip = "187.95.146.162"
+     )
+     //Garante que o log seja do FortiAnalyzer 
+     $e.metadata.base_labels.log_types = "FORTINET_FORTIANALYZER"
+     //Filtra eventos do tipo "conexão de rede" 
+     $e.metadata.event_type = "NETWORK_CONNECTION"
+     //Considera apenas conexões aceitas pelo firewall
+     $e.security_result.action_details = "Accept"
+     //Verifica se o destino da conexão é a porta 22 (SSH)
+     ($e.target.port = 22 or
+     //Ou porta 1433 (SQL Server)
+     $e.target.port = 1433 or 
+     //Ou porta 3389 (RDP - Acesso remoto)
+     $e.target.port = 3389)
+     //Armazena o IP de destino da conexão
+     $e.target.ip = $target_ip
+
+   match:
+    //A regra é acionada se o IP de destino for acessado múltiplas vezes em 10 minutos
+    $target_ip over 10m
+
+   condition:
+    //A regra será aplicada se todas as condições forem atendidas
+     $e
+}

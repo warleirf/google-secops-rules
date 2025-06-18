@@ -1,0 +1,30 @@
+/*
+    ** warlei.com.br **
+    Regra para detectar eventos de nivel alto e critico no sistema de Firewall Fortigate
+*/
+
+rule firewall_fortigate_detect_severity_high_or_critical {
+
+  meta:
+    description = "Detecta todos eventos de registro nivel High e Critical no Firewall Fortigate"
+    author = "Warlei Faria"
+    version = "1.0"
+    platform = "fortigate"
+    data_source = "firewall_fortigate"
+    type = "alert"
+    severity = "Medium"
+    priority = "Medium"
+
+
+  events:
+    $e.security_result.severity = "CRITICAL" or 
+    $e.security_result.severity = "HIGH" or 
+    $e.security_result.severity = "INFORMATIONAL" 
+
+  outcome:
+    $risk_score = 65
+
+
+  condition:
+    $e
+}

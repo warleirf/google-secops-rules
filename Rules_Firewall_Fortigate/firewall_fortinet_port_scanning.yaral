@@ -1,0 +1,25 @@
+rule firewall_fortinet_port_scanning
+{
+    meta:
+        description = "Detecta atividade de port scanning bloqueada pelo Firewall Fortinet"
+        author = "Warlei Faria"
+        version = "1.0"
+        date = "2024-09-02"
+        type = "alert"
+        platform = "firewall"
+        data_source = "firewall_fortinet"
+        severity = "Medium"
+        priority = "Medium"        
+
+    events:
+        $event.network = (
+            network.application = "scan" and
+            network.action = "blocked"
+        )
+
+    outcome:
+        $risk_score = 35
+
+    condition:
+        $event
+} 
