@@ -1,0 +1,46 @@
+//
+// 10.0.0.75 e 10.0.0.76 e 10.0.0.77 => AD n-premises
+//
+
+rule checkpoint_firewall_suspicious_behavior_port_445 {
+   meta:
+    author = "Warlei Faria"
+    description = "Suspicious behavior on port 445"
+    version = "0.01"
+    created = "2024-07-01"
+    product = "Check Point"
+    service = "Firewall"
+    mitre = "T1078"
+    severity = "Low"
+   events:
+     $private_ip = $e.principal.ip
+     (
+    net.ip_in_range_cidr($e.principal.ip, "172.16.0.0/12")
+    or net.ip_in_range_cidr($e.principal.ip, "10.0.0.0/8")
+    or net.ip_in_range_cidr($e.principal.ip, "192.168.0.0/24") 
+     )
+     $e.metadata.base_labels.log_types = "CHECKPOINT_FIREWALL"
+     $e.target.port = 445
+     (not $e.principal.ip = "172.17.12.13" or not //perguntar quem é )
+          $e.principal.ip = "10.0.0.75" or not 
+          $e.principal.ip = "10.0.0.76" or not 
+          $e.principal.ip = "10.0.0.77")
+     (not $e.target.ip = "10.0.0.75" or not
+          $e.target.ip = "10.0.0.76" or not
+          $e.target.ip = "10.0.0.77")
+    $e.principal.ip = $principal_ip
+    // CIDR reference list
+    not $e.principal.ip in cidr %trusted_ips 
+   match:
+     // Track the private IP addresses over a 10-minute window
+     $principal_ip over 1h
+
+   outcome:
+     // Count the number of distinct "target_ip" actions within the specified timeframe
+     $event_count = count_distinct($e.target.ip) 
+
+   condition:
+     // Trigger if there are 300 or more "Drop" actions in the 10-minute window
+     $e and $event_count >= 100
+}
+ 

@@ -1,0 +1,27 @@
+rule checkpoint_firewall_high_internet_transfer_over_1_GB
+    
+{
+  meta:
+    author = "Warlei Faria"
+    severity = "Medium"
+    description = "Detects transfer more than 100 MB sent to file storage and sharing applications."
+    version = "0.01"
+    created = "2024-07-01"
+    product = "Check Point"
+    service = "Application Control"
+    mitre = "T1048, T1567"
+
+  events:
+ $e.metadata.product_version = "Check Point" 
+ $e.metadata.event_type = "NETWORK_CONNECTION"
+ //$e.metadata.product_name = "Application Control"
+ $e.additional.fields["Matched Category"] = "File Storage and Sharing"
+    not re.regex($e.target.url, `.*solonetwork`) 
+
+  outcome:
+ $total_network_bytes = sum($e.network.sent_bytes) + sum($e.network.received_bytes)
+ 
+  condition:
+    $e and $total_network_bytes >= 1048576000  //1048576000 => 1 GB
+}
+ 

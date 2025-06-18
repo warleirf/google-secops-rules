@@ -1,0 +1,32 @@
+rule checkpoint_firewall_excessive_firewall_accepts_from_single_source_to_multiple_destination {
+   meta:
+    author = "Warlei Faria"
+    description = "check Point Firewall excessive accepts from single source to multiple destination"
+    version = "0.01"
+    created = "2024-08-06"
+    product = "Check Point"
+    service = "Firewall"
+    mitre = "T1078"
+    severity = "Low"
+   events:
+    //$private_ip = $e.principal.ip
+    // (
+    //net.ip_in_range_cidr($e.principal.ip, "172.16.0.0/12")
+    //or net.ip_in_range_cidr($e.principal.ip, "10.0.0.0/8")
+    //or net.ip_in_range_cidr($e.principal.ip, "192.168.0.0/24") 
+    //)
+     $e.metadata.base_labels.log_types = "CHECKPOINT_FIREWALL"
+    $e.principal.ip = $principal_ip
+   match:
+     // Track the private IP addresses over a 10-minute window
+     $principal_ip over 10m
+
+   outcome:
+     // Count the number of distinct "target_ip" actions within the specified timeframe
+     $event_count = count_distinct($e.target.ip) 
+
+   condition:
+     // Trigger if there are 300 or more "Drop" actions in the 10-minute window
+     $e and $event_count >= 500
+}
+ 
