@@ -1,0 +1,23 @@
+
+rule MultipleFailedLoginsAD {
+    meta:
+        author = "Seu Nome"
+        description = "Detecta 4 tentativas falhas de login no AD em 1 hora e emite um alerta de alto risco"
+        severity = "HIGH"
+        tags = ["FailedLogins", "AD", "Security"]
+
+    events:
+        $eventAD = {
+            source_type == "windows_security_event" 
+            and event_id == "4625"
+        }
+
+    match:
+        $failedLogin = count($eventAD) by user over window of 1h
+
+    outcome:
+        $failedLogin >= 4
+
+    condition:
+        $failedLogin
+}

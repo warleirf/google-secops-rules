@@ -1,0 +1,81 @@
+/*
+warlei.com.br
+
+Como a regra funciona:
+1 - Monitora eventos de auditoria do GCP (tipo GCP_CLOUDAUDIT) para identificar padrões incomuns.
+2 - Coleta informações como nome do produto, ID de usuário, tipo de evento, ID de processo e descrição do evento.
+3 - Verifica se mais de 100 logs distintos estão associados aos eventos em um período de 1 minuto (determinado).
+4 - Caso a condição seja atendida, um alerta é gerado com detalhes como pontuação de risco, usuários envolvidos e número de logs. 
+
+*/
+
+rule TESTE_gcp_deteccao_incomuns_de_eventos_e_logs_gerados_no_ambiente  {
+
+  //A seção meta contém metadados sobre a regra. Esses dados ajudam na identificação e categorização da regra no ambiente Chronicle.
+  meta:
+    author = "Warlei Faria"
+    rule_name = "gcp_deteccao_incomuns_de_eventos_e_logs_no_ambiente"
+    description = "Detecta alta quantidade incomum da chegada de logs e eventos, em um período determinado de tempo."
+    version = "v1.0"
+    type = "Alert"
+    platform = "GCP"
+    data_source = "Google Cloud Platform"
+    severity = "High"
+    priority = "High"
+
+
+  //A seção events define os eventos que serão analisados pela regra. Aqui, está configurada para monitorar eventos de auditoria do GCP.
+  events:
+    //event_type: Especifica o tipo de evento, configurado para "GCP_CLOUDAUDIT".
+ 	$event.metadata.log_type  = "GCP_CLOUDAUDIT"            //Opções: ["GCP_FIREWALL", "KUBERNETES_NODE", "GCP_LOADBALANCING" or "GCP_CLOUDSQL"]
+    //product_name: Nome do produto do GCP associado ao log.                       
+    $event.metadata.product_name = ""
+    //event_type: Especifica o tipo de evento configurado 
+    $event.metadata.event_type  = "USER_LOGIN"              //Opções: ["USER_LOGIN", "GENERIC_EVENT", "NETWORK_CONNECTION", "USER_UNCATEGORIZED" or "USER_RESOURCE_ACCESS"]
+    //vendor_name: Nome do fornecedor (neste caso, vazio, pois o foco é apenas no GCP).    
+	$event.metadata.vendor_name = ""
+    //user.userid: Identifica o usuário que gerou os logs.
+    $event.principal.user.userid = ""                       // Opçoes: ["cloudsqladmin", ]
+    //result.severity: Identifica a criticidade do evento gerado. 
+    $event.security_result.severity = "INFORMATIONAL"       //Opções: ["CRITICAL", "ERROR", "HIGH", "LOW" or "MEDIUM"]
+    //target.resource.name: Identifica a origem do nome do recurso associado.
+    $event.target.resource.name  = "controller"             //Opções: ["controller", "Kubernetes", "cloudsqladmin"]
+    //A variável $event_id é inicializada para capturar o ID do evento associado aos eventos.
+    $event.principal.process.pid = $event_id
+
+
+//A seção match define o intervalo de tempo para a análise.
+  match:
+    //over 1m: Define que os eventos serão analisados em uma janela de 1 minuto (pode ser definido outros valores).
+    $event_id over 1m
+
+
+//A seção outcome define as informações que serão incluídas no alerta gerado, quando a regra for acionada.
+  outcome:
+    //$risk_score: Define a pontuação de risco máxima como 85.
+    $risk_score = max(85)
+    //Lista os nomes dos produtos GCP envolvidos (eliminando duplicatas).
+    $product = array_distinct($event.metadata.product_name)
+    //Identifica os usuários únicos associados aos eventos.
+    $userid = array_distinct($event.principal.user.userid)
+    //Identifica a porta único usada associada ao evento.
+    $port = array_distinct($event.target.port)
+    //Captura descrições únicas dos eventos analisados.
+    $description = array_distinct($event.metadata.description)
+    //Lista os níveis de severidade dos eventos.
+    $severity = array_distinct($event.security_result.severity)
+    //Captura os nomes únicos dos projetos GCP envolvidos.
+    $project = array_distinct($event.principal.object_reference.namespace)
+    //Identifica os objetos IDs dos logs únicos associados aos eventos.
+    $log_id = array_distinct($event.target.resource.product_object_id)
+    //$count_logs: Conta o número de logs distintos gerados.
+    $count_logs = count_distinct($event.metadata.product_log_id)
+	
+
+//A seção condition define o critério que deve ser atendido para a regra ser acionada.    
+  condition:
+    //$event: Verifica se o evento configurado é válido.
+    //$count_logs > 100: A regra será acionada se mais de 100 eventos (ids) distintos forem identificados nos logs dentro do intervalo de 1 minuto (configurado no campo match).
+    $event and $count_logs >= 100
+
+}
