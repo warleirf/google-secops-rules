@@ -1,0 +1,60 @@
+rule REGRA_2_Teste_windows_creation_of_scheduled_task {
+
+  meta:
+    author = "Warlei Faria"
+    description = "Detecta criação de tarefas agendadas, usando linhas de comandos no windows"
+    type = "alert"
+    platform = "Windows"
+    data_source = "Windows_AD"
+    severity = "Medium"
+    priority = "Medium"
+
+events:
+    // Filtra eventos do tipo WINDOWS_AD (Windows Active Directory)
+    $process.metadata.log_type = "WINDOWS_AD"
+    // Seleciona eventos de lançamento de processos
+    $process.metadata.event_type = "PROCESS_LAUNCH"
+    // Extrai o nome do host (computador onde o processo ocorreu)
+    $process.principal.hostname = $hostname
+    // Verifica se a linha de comando contém 'schtasks' com '/create', ignorando maiúsculas/minúsculas
+    re.regex($process.principal.process.command_line, `schtasks.*/create`) nocase
+
+match:
+    // Agrupa os eventos por hostname no intervalo de 5 minutos
+    $hostname over 5m
+
+outcome:
+    // Define a pontuação de risco como 65 (alerta moderado)
+    $risk_score = 65
+    // Conta o número de eventos distintos com base no ID
+    $event_count = count_distinct($process.metadata.id)
+    // Lista distinta de hostnames envolvidos
+    $principal_hostname = array_distinct($process.principal.hostname)
+    // Lista distinta de PIDs (process IDs) dos processos iniciados
+    $principal_process_pid = array_distinct($process.principal.process.pid)
+    // Lista distinta de linhas de comando dos processos
+    $principal_process_command_line = array_distinct($process.principal.process.command_line)
+    // Lista dos hashes SHA256 dos arquivos executados
+    $principal_process_file_sha256 = array_distinct($process.principal.process.file.sha256)
+    // Caminhos completos dos arquivos executados
+    $principal_process_file_full_path = array_distinct($process.principal.process.file.full_path)
+    // IDs específicos dos processos (conforme fornecido pelo produto)
+    $principal_process_product_specific_process_id = array_distinct($process.principal.process.product_specific_process_id)
+    // IDs específicos dos processos pais (quem iniciou o processo)
+    $principal_process_parent_process_product_specific_process_id = array_distinct($process.principal.process.parent_process.product_specific_process_id)
+    // PIDs dos processos alvo, se houver
+    $target_process_pid = array_distinct($process.target.process.pid)
+    // Linhas de comando dos processos alvo
+    $target_process_command_line = array_distinct($process.target.process.command_line)
+    // Hashes SHA256 dos arquivos dos processos alvo
+    $target_process_file_sha256 = array_distinct($process.target.process.file.sha256)
+    // Caminhos completos dos arquivos dos processos alvo
+    $target_process_file_full_path = array_distinct($process.target.process.file.full_path)
+    // IDs específicos dos processos alvo
+    $target_process_product_specific_process_id = array_distinct($process.target.process.product_specific_process_id)
+    // IDs de usuário dos responsáveis pelos processos
+    $principal_user_userid = array_distinct($process.principal.user.userid)
+
+  condition:
+    $process
+}

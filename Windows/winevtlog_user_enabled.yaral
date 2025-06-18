@@ -1,0 +1,16 @@
+
+
+rule winevtlog_user_enabled {
+  meta:
+    author = "warlei.faria"
+    description = "Reports when an account is enabled"
+    severity = "Low"
+
+  events:
+    $e.metadata.event_type = "USER_CHANGE_PERMISSIONS"
+    $e.metadata.description = "A user account was enabled"
+
+  condition:
+    $e
+}
+
